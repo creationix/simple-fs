@@ -10,12 +10,12 @@ This module implements the following functions from the fs interface which is de
 - stat(path) -> continuable<stat>
 - read(path, [encoding]) -> continuable<value>
 - write(path, value, [encoding]) -> continuable
-- readStream(path, [options]) -> stream<binary>
-- writeStream(path, [options]) -> sink<binary>
+- readStream(path, [options]) -> continuable<stream>
+- writeStream(path, [options]) -> continuable<sink>
 - unlink(path) -> continuable
 - readlink(path) -> continuable<target>
 - symlink(path, target) -> continuable
-- readdir(path) -> stream<name>
+- readdir(path) -> continuable<stream>
 - rmdir(path) -> continuable
 - mkdir(path) -> continuable
 - rename(path, target) -> continuable
@@ -23,20 +23,27 @@ This module implements the following functions from the fs interface which is de
 ```js
 var fs = require('simple-fs');
 
-// Streaming copy a file
+// Streaming copy a file callback style
+function copy(source, dest, callback) {
+  var stream;
+  // Set up a readStream.
+  fs.readStream("input.txt", onReadStream);
 
-// Set up a source, the file isn't actually opened till the stream is read from.
-var source = fs.readStream("input.txt");
+  function onReadStream(err, result) {
+    if (err) return callback(err);
+    stream = result;
+    // Set up a writable sink
+    fs.writeStream("copy.txt", onWriteStream);
+  }
 
-// Set up a sink.  The file isn't actually opened yet.
-var sink = fs.writeStream("copy.txt");
+  function onWriteStream(err, sink) {
+    if (err) return callback(err);
+    // Stream from source to sink
+    sink(stream, callback);
+  }
+}
 
-// Hook the source to the sink, but still don't create either file or start moving yet.
-var continuable = sink(source);
-
-// Now, create both files and stream the contents.  If there is a problem it will be reported here.
-// Otherwise the continuable will resolve with no error when done streaming.
-continuable(function (err) {
+copy("input.txt", "copy.txt", function (err) {
   if (err) throw err;
   console.log("Done Streaming");
 });
@@ -51,11 +58,17 @@ var run = require('gen-run');
 var fs = require('simple-fs');
 
 function* copy(source, dest) {
-  yield fs.writeStream(dest)(fs.readStream(source));
+  // Set up a readStream.
+  var stream = yield fs.readStream(source);
+  // Set up a writable sink
+  var sink = yield fs.writeStream(dest);
+  // Stream from source to sink
+  yield sink(stream);
 }
 
 run(function* () {
   yield* copy("input.txt", "copy.txt");
+  console.log("Done Streaming");
 });
 ```
 
@@ -68,5 +81,8 @@ In addition to the exports object implementing the fs interface with respect to 
 var fs = require('simple-fs')("/home/tim/Code/js-git/.git");
 
 // read the first chunk in the staging area's index.
-fs.readStream("/index")(null, console.log);
+fs.readStream("/index", function (err, stream) {
+  if (err) throw err;
+  stream.read(console.log);
+});
 ```
