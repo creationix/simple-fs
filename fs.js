@@ -86,6 +86,10 @@ function write(path, value, encoding, callback) {
 // options.end the offset of the last byte to read
 // readStream(path, options) -> continuable<stream>
 function readStream(path, options, callback) {
+  if (typeof options === "function") {
+    callback = options;
+    options = null;
+  }
   if (!callback) return readStream.bind(this, path, options);
   options = options || {};
   var position = options.start;
@@ -139,6 +143,10 @@ function readStream(path, options, callback) {
 }
 
 function writeStream(path, options, callback) {
+  if (typeof options === "function") {
+    callback = options;
+    options = null;
+  }
   if (!callback) return writeStream.bind(this, path, options);
   options = options || {};
   var fd, stream, onDone, done = false;
