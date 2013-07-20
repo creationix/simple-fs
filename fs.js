@@ -72,7 +72,7 @@ function stat(path, callback) {
 }
 
 function read(path, encoding, callback) {
-  if (!callback) return read.bind(this, path);
+  if (!callback) return read.bind(this, path, encoding);
   fs.readFile(path, encoding, callback);
 }
 
